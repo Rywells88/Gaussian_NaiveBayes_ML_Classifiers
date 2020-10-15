@@ -1,6 +1,5 @@
 import numpy as np
 from numpy import pi, exp
-import collections
 from scipy.io import loadmat
 import matplotlib.pyplot as plt
 
@@ -9,57 +8,46 @@ data = loadmat('a1digits.mat') #dictionary types
 training_data = data['digits_train']
 testing_data = data['digits_test']
 
+class_dict = {}
 
-
+fig, ax = plt.subplots(1, 10, figsize = (18,10))
 
 # this function returns the prior probabilities of the 2 classes taking in the label set as inputs
 def calc_classPrior():
     return 0.01
 
-def calc_mean(k, pixel): # k is the class for the mean we are trying to generate
+def calc_mean(k, pixel): # k is the class for the mean we are trying to generate, pixel is a value from 1-64
     global training_data
-    # for the number of training data points in class K, sum together all data points from each example
+
     sumK = 0
 
-    #newArr = training_data[k-1][3].reshape(8,8)
-    #plt.imshow(newArr, cmap='gray')
-    #plt.show()
+    for i in range(len(training_data[k])): # 700
+        sumK += training_data[k][i][pixel] # go through example 0, 1,2,3,... 700
 
-    for i in range(len(training_data[k-1])): # 700
-        sumK += training_data[k-1][i][pixel] # go through example 0, 1,2,3,... 700
-
+    #goes through each example for a given class and pixel, and finds the mean value of that pixel.
     return (sumK/len(training_data[k]))
 
-def variance(pixel):
-    global training_data
-    var = 0
-    sumK = 0
-    for i in range(10): # for each number
-        for j in range(700): # each training case for each number
+def getVariance(x):
+   return (np.var(x))
 
 
-            var += (training_data[i][j][pixel] - calc_mean(i, pixel))**2 # pixel is a value from 0-64
+def feature_in_class_probability(x,variance, means):
+    answer_list = []
 
-    return (var)
+    for j in range(10):
+        sumTotal = 0
+        sub = 0
 
-def feature_in_class_probability(x, k):
-    var = 0
-    sum = 0
+        sub = (np.subtract(x,means[j]))**2
+        sumTotal = np.sum(sub)
 
-    for i in range(64):
-        # D is 64, there's 64 features
-        sum += (x[i] - (calc_mean(k, i)))**2
-        var += variance(i)
+        product = exp(-sumTotal)
 
-    print(var)
-    power = -64/5
-    firstTerm = ((2 * pi * var**2)**power)
+        PCkx = product * calc_classPrior()
 
-    product = firstTerm * exp(-1/2*(var)*sum)
+        answer_list.append(PCkx)
 
-    return product
-
-
+    return answer_list
 
 
 
@@ -71,54 +59,39 @@ def main():
     training_data= np.transpose(training_data)
     testing_data =np.transpose(testing_data)
 
+    means = np.zeros((10, 64))
 
-    # -----  below are some examples to access the data.  ----------
+    for i in range(10):
+        for j in range(64):
+            means[i][j] = calc_mean(i, j)
 
-    #print(training_data[0][0]) # digit 1, example 1 all pixels
+    V = getVariance(training_data)
 
+    correctCount = 0
+    error_count = np.zeros(10)
 
-    #print(training_data[1][0]) # digit 2, example 1 all pixels
+    for k in range(10):
+        for example in range(400):
+            PxCk = feature_in_class_probability(testing_data[k][example], V, means)
 
-    #print("mean for pixel 40 in class 4 is: ",  calc_mean(5, 40)) # number 4, pixel 40
-    probability_per_class = []
+            print(max(PxCk), " in class ",PxCk.index(max(PxCk)))
+            print("\n")
 
-    for i in range (1, 10):
-        probability = feature_in_class_probability(training_data[2][1], i)
-        print(probability)
-        probability_per_class.append(probability)
+            if(k == PxCk.index(max(PxCk))):
+                correctCount += 1
+            else:
+                error_count[k] += 1
 
-    print(max(probability_per_class))
+    print(correctCount/4000)
+    print(error_count)
 
+    names = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
 
-
-
-
-
-""""
-    picture4 = np.zeros((8,8))
-    counter = 0
-    for i in range(8):
-        for j in range(8):
-            print(counter)
-            picture4[i][j]=  calc_mean(4, counter)
-            counter += 1
-
-    plt.imshow(picture4, cmap = 'gray')
+    for i in range(10):
+        ax[i].imshow(means[i].reshape(8, 8), cmap='gray', interpolation='nearest')
+        ax[i].set_title(names[i])
+        ax[0].text(0,-5, "Standard deviation : 0.3049" )
     plt.show()
-"""
-    #totalVariance = 0
-   # for i in range(0,64):
-      # totalVariance += variance(i)
-    #print(totalVariance/70000*10)
-
-    #for i in range(10):
-        #Pxc = feature_in_class_probability( , i,totalVariance)
-
-    #ans = pxc * calc_classPrior()
-
-
-
-
 
 main()
 
